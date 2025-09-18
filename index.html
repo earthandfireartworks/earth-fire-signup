@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Free Design Pack — Earth & Fire Artworks</title>
+  <style>
+    :root { --bg:#0b0b12; --card:#12121b; --text:#e9ecf1; --muted:#9aa4b2; --accent:#9b87f5; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background: var(--bg); color: var(--text); margin:0; }
+    .wrap { max-width: 620px; margin: 0 auto; padding: 28px 18px 56px; }
+    .card { background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); }
+    h1 { font-size: 1.8rem; margin: 0 0 12px; letter-spacing: .3px; }
+    p.lead { color: var(--muted); margin: 0 0 18px; }
+    form { display: grid; gap: 12px; margin-top: 14px; }
+    input[type="text"], input[type="email"] {
+      width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15);
+      background: #0f0f16; color: var(--text); outline: none;
+    }
+    input::placeholder { color: #778294; }
+    label { display: flex; gap: 10px; align-items: flex-start; font-size: 0.95rem; color: #c6cbd5; }
+    button {
+      padding: 12px 16px; border: 0; border-radius: 12px; background: var(--accent); color: #0c0c12;
+      font-weight: 700; cursor: pointer; transition: transform .04s ease, box-shadow .2s;
+      box-shadow: 0 8px 16px rgba(155,135,245,.35);
+    }
+    button:active { transform: translateY(1px); }
+    .fine { font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
+    .hp { display:none; } /* honeypot */
+    #msg { min-height: 20px; font-size: .95rem; margin-top: 6px; }
+    #msg.ok { color: #4ade80; }
+    #msg.err { color: #fb7185; }
+    .brand { display:flex; align-items:center; gap:10px; margin-bottom: 8px; }
+    .badge { font-size: .78rem; padding: 4px 8px; border-radius: 999px; background: rgba(155,135,245,.15); border: 1px solid rgba(155,135,245,.35); color: #d7d0ff; }
+    .footer { text-align:center; margin-top: 22px; color: var(--muted); font-size:.85rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 2l2.39 4.84L20 7.27l-3.9 3.8L17.3 18 12 15.27 6.7 18l1.2-6.93L4 7.27l5.61-.43L12 2z" stroke="#9b87f5" stroke-width="1.2" fill="none"/>
+      </svg>
+      <div><div class="badge">Earth &amp; Fire Artworks</div></div>
+    </div>
+
+    <div class="card">
+      <h1>Get your free design document</h1>
+      <p class="lead">Drop your email and I’ll send the download instantly. No spam — just occasional drops & behind-the-scenes.</p>
+
+      <form id="signup" novalidate>
+        <input name="name" type="text" placeholder="Name (optional)" autocomplete="name" />
+        <input name="email" type="email" placeholder="Email" autocomplete="email" required />
+        <label><input name="consent" type="checkbox" value="true" required /> I agree to receive the file and occasional updates.</label>
+        <div class="hp"><label>Leave this empty: <input name="website" type="text" /></label></div>
+        <button type="submit">Get my free designs</button>
+        <div id="msg"></div>
+      </form>
+    </div>
+
+    <div class="footer">© Earth &amp; Fire Artworks</div>
+  </div>
+
+  <script>
+    // 1) Replace with your Cloudflare Worker URL (ends with .workers.dev)
+    const WORKER_SUBSCRIBE_URL = 'https://YOUR_WORKER_SUBDOMAIN.workers.dev/subscribe';
+
+    document.getElementById('signup').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.currentTarget;
+      const msg = document.getElementById('msg');
+
+      if (form.website && form.website.value) { return; } // honeypot
+      const name = form.name.value.trim();
+      const email = form.email.value.trim();
+      const consent = form.consent.checked;
+
+      if (!email || !consent) {
+        msg.className = 'err';
+        msg.textContent = 'Please enter your email and agree to receive updates.';
+        return;
+      }
+
+      msg.className = '';
+      msg.textContent = 'Sending…';
+
+      try {
+        const res = await fetch(WORKER_SUBSCRIBE_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, consent: true })
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          msg.className = 'ok';
+          // Always show immediate download link so users get the file even if email is blocked
+          const link = data.fileUrl ? ` <a href="${data.fileUrl}" target="_blank" rel="noopener">Download now</a>` : '';
+          msg.innerHTML = (data.suppressed)
+            ? 'You were previously unsubscribed, so we did not email you.' + link
+            : 'Success! Check your inbox for the file.' + link;
+          form.reset();
+        } else {
+          msg.className = 'err';
+          msg.textContent = data.error || 'Something went wrong. Try again later.';
+        }
+      } catch (err) {
+        msg.className = 'err';
+        msg.textContent = 'Network error. If this persists, contact us.';
+      }
+    });
+  </script>
+</body>
+</html>
